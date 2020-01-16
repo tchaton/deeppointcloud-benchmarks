@@ -1,29 +1,28 @@
-
 from omegaconf.dictconfig import DictConfig
 from omegaconf.listconfig import ListConfig
 
 
 def resolve_model(model_config, dataset, tested_task):
-
+    """ Parses the model config and evaluates any expression that may contain constants
+    """
     # placeholders to subsitute
     constants = {
-        'FEAT': max(dataset.feature_dimension, 3),
-        'TASK': tested_task,
-        'N_CLS': dataset.num_classes if hasattr(dataset, 'num_classes') else None
+        "FEAT": max(dataset.feature_dimension, 3),
+        "TASK": tested_task,
+        "N_CLS": dataset.num_classes if hasattr(dataset, "num_classes") else None,
     }
 
     # user defined contants to subsitute
-    if 'define_constants' in model_config.keys():
+    if "define_constants" in model_config.keys():
         constants.update(dict(model_config.define_constants))
 
     _resolve(model_config, constants)
 
-# Resolves expressions and constants in obj.
-# returns False if obj is a ListConfig or DictConfig, True is obj is a primative type.
-
 
 def _resolve(obj, constants):
-
+    """ Resolves expressions and constants in obj.
+    returns False if obj is a ListConfig or DictConfig, True is obj is a primative type.
+    """
     if type(obj) == DictConfig:
         it = (k for k in obj)
     elif type(obj) == ListConfig:

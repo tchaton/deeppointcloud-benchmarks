@@ -2,11 +2,17 @@ import os
 from collections import OrderedDict, ChainMap
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
+import copy
 import torch
 from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 import functools
 import operator
+import logging
+
+from schedulers.lr_schedulers import get_scheduler
+
+log = logging.getLogger(__name__)
 
 
 class BaseModel(torch.nn.Module):
@@ -35,17 +41,29 @@ class BaseModel(torch.nn.Module):
         self.loss_names = []
         self.output = None
         self._optimizer: Optional[Optimizer] = None
-        self._scheduler: Optimizer[_LRScheduler] = None
+        self._lr_scheduler: Optimizer[_LRScheduler] = None
         self._sampling_and_search_dict: Dict = {}
-        self._precompute_multi_scale = opt.precompute_multi_scale if 'precompute_multi_scale' in opt else False
+        self._precompute_multi_scale = opt.precompute_multi_scale if "precompute_multi_scale" in opt else False
+        self._iterations = 0
+        self._lr_params = None
 
     @property
-    def scheduler(self):
-        return self._scheduler
+    def lr_params(self):
+        try:
+            params = copy.deepcopy(self._lr_params)
+            params.lr_base = self.learning_rate
+            return params
+        except:
+            return None
 
     @property
     def optimizer(self):
         return self._optimizer
+
+    @property
+    def learning_rate(self):
+        for param_group in self.optimizer.param_groups:
+            return param_group["lr"]
 
     @abstractmethod
     def set_input(self, input):
@@ -56,22 +74,35 @@ class BaseModel(torch.nn.Module):
         pass
 
     def get_labels(self):
+        """ returns a trensor of size [N_points] where each value is the label of a point
+        """
         return getattr(self, "labels", None)
+
+    def get_batch_idx(self):
+        """ returns a trensor of size [N_points] where each value is the batch index of a point
+        """
+        return getattr(self, "batch_idx", None)
+
+    def get_output(self):
+        """ returns a trensor of size [N_points,...] where each value is the output
+        of the network for a point (output of the last layer in general)
+        """
+        return self.output
 
     @abstractmethod
     def forward(self) -> Any:
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
         pass
 
-    def get_output(self):
-        return self.output
-
-    def optimize_parameters(self):
+    def optimize_parameters(self, batch_size):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
-        self.forward()               # first call forward to calculate intermediate results
-        self._optimizer.zero_grad()   # clear existing gradients
-        self.backward()              # calculate gradients
-        self._optimizer.step()        # update parameters
+        self._iterations += batch_size
+        self.forward()  # first call forward to calculate intermediate results
+        self._optimizer.zero_grad()  # clear existing gradients
+        self.backward()  # calculate gradients
+        self._optimizer.step()  # update parameters
+        if self._lr_scheduler is not None:
+            self._lr_scheduler.step(self._iterations)
 
     def get_current_losses(self):
         """Return traning losses / errors. train.py will print out these errors on console"""
@@ -85,17 +116,19 @@ class BaseModel(torch.nn.Module):
                         errors_ret[name] = None
         return errors_ret
 
-    def set_optimizer(self, optimizer_cls: Optimizer, lr=0.001):
-        self._optimizer = optimizer_cls(self.parameters(), lr=lr)
-        print(self._optimizer)
+    def set_optimizer(self, optimizer_cls: Optimizer, lr_params):
+        self._optimizer = optimizer_cls(self.parameters(), lr=lr_params.base_lr)
+        self._lr_scheduler = get_scheduler(lr_params, self._optimizer)
+        self._lr_params = lr_params
+        log.info(self._optimizer)
 
     def get_named_internal_losses(self):
-        '''
+        """
             Modules which have internal losses return a dict of the form
             {<loss_name>: <loss>}
             This method merges the dicts of all child modules with internal loss
             and returns this merged dict
-        '''
+        """
 
         losses_global = []
 
@@ -104,29 +137,30 @@ class BaseModel(torch.nn.Module):
                 if isinstance(module, BaseInternalLossModule):
                     losses_global.append(module.get_internal_losses())
                 search_from_key(module._modules, losses_global)
+
         search_from_key(self._modules, losses_global)
 
         return dict(ChainMap(*losses_global))
 
     def get_internal_loss(self):
-        '''
-            Returns the average internal loss of all child modules with 
+        """
+            Returns the average internal loss of all child modules with
             internal losses
-        '''
+        """
 
         losses = tuple(self.get_named_internal_losses().values())
         if len(losses) > 0:
             return torch.mean(torch.stack(losses))
         else:
-            return 0.
+            return 0.0
 
     def get_sampling_and_search_strategies(self):
         return self._sampling_and_search_dict
 
 
 class BaseInternalLossModule(ABC):
-    '''ABC for modules which have internal loss(es)
-    '''
+    """ABC for modules which have internal loss(es)
+    """
 
     @abstractmethod
     def get_internal_losses(self) -> Dict[str, Any]:

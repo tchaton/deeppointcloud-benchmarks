@@ -1,15 +1,14 @@
 # Those arguments within experiment defines which model, dataset and task to be created for benchmarking
 experiment:
-    name: pointnet2_kc
-    experiment_name: "" # Wether to use hydra naming convention for the experiment
-    log_dir: "" # Wether to use hydra automatic path generation for saving training
+    model_name: pointnet2_charlesmsg
+    checkpoint_dir: "/home/nicolas/deeppointcloud-benchmarks/outputs/2020-01-14/22-56-10"
     resume: True
     task: segmentation
     dataset: pcpnet_shape
 
 # parameters for Weights and Biases
 wandb:
-    project: benchmarking
+    project: shapenet-pn2
     log: False
 
 # parameters for TensorBoard Visualization
@@ -22,35 +21,53 @@ training:
     num_workers: 8
     batch_size: 2
     cuda: 1
-    precompute_multi_scale: False # Compute multiscate features on cpu for faster training / inference 
-    epochs: 350
+    precompute_multi_scale: False # Compute multiscate features on cpu for faster training / inference
+    epochs: -1
     optimizer: Adam
-    lr : 0.01
-    weight_name: 'default' # Used during resume, select with model to load from [metric_name..., default]
-    use_torch_loader: True
+    learning_rate:
+        scheduler_type: "step_decay"
+        base_lr: 0.001
+        lr_decay: 0.5
+        decay_step: 200000
+        lr_clip: 1e-5
+    weight_name: "miou" # Used during resume, select with model to load from [miou, macc, acc..., latest]
+    enable_cudnn: True
 
 # Those arguments defines the available datasets
 data:
-    shapenet: 
+    shapenet:
         name: shapenet
         dataroot: data
-        category: Airplane
         normal: True
         num_points: 2048
 
     # This dataset can be used only for classification
-    modelnet: 
+    modelnet:
         name: modelnet
         dataroot: data
         number: 10
 
-    # This dataset can be used only for classification
-    s3dis: 
+    s3dis1x1:
+        name: s3dis1x1
+        dataroot: data
+        fold: 5
+        class_weight_method: "sqrt"
+        num_points: 1024
+        first_subsampling: 0.04
+        density_parameter: 5.0
+        kp_extent: 1.0
+
+    # Doesn't seem to be very efficient
+    s3dis:
         name: s3dis
         dataroot: data
         fold: 5
-        class_weight_method: 'sqrt'
+        class_weight_method: "sqrt"
+        room_points: 32768
         num_points: 4096
+        first_subsampling: 0.04
+        density_parameter: 5.0
+        kp_extent: 1.0
 
     pcpnet_shape:
         name: pcpnet_shape
@@ -61,3 +78,4 @@ data:
 defaults:
     - models: segmentation
     - sota # Contains current SOTA results on different datasets (extracted from papers !).
+    - hydra/job_logging: custom

@@ -8,6 +8,13 @@ class ConfusionMatrix:
         self.number_of_labels = number_of_labels
         self.confusion_matrix = np.zeros(shape=(self.number_of_labels, self.number_of_labels))
 
+    @staticmethod
+    def create_from_matrix(confusion_matrix):
+        assert confusion_matrix.shape[0] == confusion_matrix.shape[1]
+        matrix = ConfusionMatrix(confusion_matrix.shape[0])
+        matrix.confusion_matrix = confusion_matrix
+        return matrix
+
     def count_predicted(self, ground_truth, predicted, number_of_added_elements=1):
         self.confusion_matrix[ground_truth][predicted] += number_of_added_elements
 
@@ -70,7 +77,9 @@ class ConfusionMatrix:
 
     def get_average_intersection_union(self,):
         values = self.get_intersection_union_per_class()
-        class_seen = ((self.confusion_matrix.sum(1)+self.confusion_matrix.sum(0)) != 0).sum()
+        class_seen = ((self.confusion_matrix.sum(1) + self.confusion_matrix.sum(0)) != 0).sum()
+        if class_seen == 0:
+            return 0
         return sum(values) / class_seen
 
     def get_mean_class_accuracy(self):  # added
@@ -81,7 +90,9 @@ class ConfusionMatrix:
             if total_gt:
                 label_presents += 1
                 re = re + self.confusion_matrix[i][i] / max(1, total_gt)
-        return re/label_presents
+        if label_presents == 0:
+            return 0
+        return re / label_presents
 
     def count_gt(self, ground_truth):
         return self.confusion_matrix[ground_truth, :].sum()

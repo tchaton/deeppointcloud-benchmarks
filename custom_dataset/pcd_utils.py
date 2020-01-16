@@ -276,7 +276,7 @@ class AHNPointCloud(PointCloud):
 
     def log_clip_intensity(self):
         self.intensity = np.log(
-            self.intensity.clip(0, 5000)
+            self.intensity.clip(0.001, 5000)
         )
 
     def remap_classification(self):

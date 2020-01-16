@@ -131,28 +131,45 @@ class Grid2DPatchDataset(BasePointCloudPatchDataset):
     def __init__(self, data: Data, blockX, blockY, contextDist):
         super().__init__(data)
 
-        self.blockX = blockX
-        self.blockY = blockY
+        self.blockXDist = blockX
+        self.blockYDist = blockY
         self.contextDist = contextDist
-        self.strideX = blockX - contextDist
-        self.strideY = blockY - contextDist
+        self.strideXDist = blockX - contextDist
+        self.strideYDist = blockY - contextDist
 
         self.minPoint, self.maxPoint = self.get_bounding_box()
 
-    def __len__(self):
-        lenX, lenY, _ = self.maxPoint - self.minPoint
-        lenX = lenX.item()
-        lenY = lenY.item()
+        cloudSizeX, cloudSizeY, _ = self.maxPoint - self.minPoint
 
-        length = math.ceil(lenX / self.strideX) * math.ceil(lenY / self.strideY)
-        return length
+        #number of blocks in the x dimension (grid columns)
+        self.numBlocksX = math.ceil(cloudSizeX / self.strideXDist) 
+
+        #number of blocks in the y dimension (grid rows) 
+        self.numBlocksY = math.ceil(cloudSizeY / self.strideYDist) 
+
+    def __len__(self):
+        return self.numBlocksX * self.numBlocksY
 
     def get(self, idx):
-        xyMin = self.minPoint
-        xyMax = self.minPoint + torch.tensor([self.strideX, self.strideY, 0]).to(self.minPoint.dtype)
-        index = self.get_box_index(xyMin, xyMax)
+        # xyMin = self.minPoint
+        # xyMax = self.minPoint + torch.tensor([self.strideX, self.strideY, 0]).to(self.minPoint.dtype)
+        # index = self.get_box_index(xyMin, xyMax)
+
+        # return index
+
+        yIndex, xIndex = divmod(idx, self.numBlocksX)
+
+        blockMinY = yIndex * self.strideYDist
+        blockMinX = xIndex * self.strideXDist
+
+        blockMaxY = blockMinY + self.strideYDist
+        blockMaxX = blockMinX + self.strideXDist
+
+        index = self.get_box_index((blockMinX, blockMinY), (blockMaxX, blockMaxY))
 
         return index
+
+        
 
     def get_box_index(self, xyMin, xyMax):
         

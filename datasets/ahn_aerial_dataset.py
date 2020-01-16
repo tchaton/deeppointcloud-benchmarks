@@ -15,6 +15,20 @@ from base_dataset import BaseDataset
 
 class AHNTilesDataset(InMemoryDataset):
 
+    adriaan_tiles_train = [
+            '37EN2_11.LAZ',
+            '37EN2_16.LAZ',
+            '37FZ2_21.LAZ',
+    ]
+    adriaan_tiles_test = [
+            '43FZ2_20.LAZ',
+    ]
+
+    small_tile = [
+        '37EN2_11_section.laz'
+    ]
+
+
     def __init__(self, root, split, transform=None, pre_transform=None, pre_filter=None):
 
         self.split = split
@@ -25,14 +39,9 @@ class AHNTilesDataset(InMemoryDataset):
 
     @property
     def raw_file_names(self):
-        return [
-            '37EN2_11.LAZ',
-            '37EN2_16.LAZ',
-            '37FZ2_21.LAZ',
-        ] if self.split == 'train' else [
-            '43FZ2_20.LAZ',
-        ]
-
+        # return self.adriaan_tiles_train if self.split == 'train' else self.adriaan_tiles_test
+        return self.small_tile
+        
     @property
     def processed_file_names(self):
         return ['{}_data.pt'.format(self.split)]

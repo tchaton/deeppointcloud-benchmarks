@@ -54,7 +54,7 @@ class PCPNetPatchDataset(BasePatchDataset):
     def __init__(self, category, split):
         super().__init__()
 
-        self._cloud_dataset = PCPNetCloudDataset(split, category)
+        self._pointcloud_dataset = PCPNetCloudDataset(split, category)
 
 class PCPNetShapeDataset(BaseDataset):
 

@@ -7,6 +7,7 @@ import hashlib
 from pathlib import Path
 import json
 
+import open3d as o3d
 import numpy as np
 import pdal 
 import pandas
@@ -168,6 +169,11 @@ class PointCloud(ABC):
     
     def to_dataframe(self) -> pandas.DataFrame:
         return pandas.DataFrame(self.to_recarray())
+
+    def to_o3d_pcd(self) -> o3d.geometry.PointCloud:
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(self.pos)
+        return pcd
 
     def to_e57(self):
         numpy_to_file(self.to_recarray(), self.name, '.e57')

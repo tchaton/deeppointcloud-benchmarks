@@ -18,7 +18,7 @@ def main(cfg):
 
     dataset = find_dataset_using_name(dataset_name)(dataset_config, cfg.training)
 
-    # visualize_pointcloud(dataset.train_dataset._cloud_dataset[0])
+    visualize_pointcloud(dataset.train_dataset._cloud_dataset[0])
 
 if __name__ == '__main__':
     main()

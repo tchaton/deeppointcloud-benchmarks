@@ -8,6 +8,8 @@ from pathlib import Path
 import json
 
 import open3d as o3d
+import torch
+from torch_geometric.data import Data
 import numpy as np
 import pdal 
 import pandas
@@ -264,6 +266,13 @@ class AHNPointCloud(PointCloud):
         clas = np.expand_dims(recarray['Classification'], axis=1)
 
         return (pos, intensity, num_returns, return_ordinal, clas)
+
+    def to_torch_data(self) -> Data:
+        return Data(
+            pos = torch.tensor(self.pos), 
+            x = torch.tensor(np.concatenate((self.intensity, self.num_returns, self.return_ordinal), axis=1)),
+            y = torch.tensor(self.clas),
+        )
 
     def log_clip_intensity(self):
         self.intensity = np.log(

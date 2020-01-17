@@ -5,8 +5,9 @@ import numpy as np
 from pcd_utils import PointCloud, AHNPointCloud
 import pcd_utils
 
-datapath = '/mnt/c/Users/trist/home/delft_data/adriaan_tiles/'
-cloud = '37EN2_11_section.LAZ'
+datapath = '/home/tristan/data/'
+# cloud = '37EN2_11_section.laz'
+cloud = 'adriaan_tiles/37EN2_11.LAZ'
 
 # pointcloud = PointCloud(datapath + cloud)
 
